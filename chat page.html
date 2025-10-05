@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PRIME AI Chat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --bg-main: #131314;
+            --bg-sidebar: #1e1f20;
+            --bg-input-container: #1e1f20;
+            --bg-user-message: #37393b;
+            --bg-ai-message: #222327;
+            --bg-button: #37393b;
+            --bg-button-hover: #474747;
+            --border-color: #37393b;
+            --text-primary: #e3e3e3;
+            --text-secondary: #9a9b9c;
+            --accent-color: #a8c7fa;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg-main); }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+        /* Base styles */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-primary);
+            overflow: hidden;
+        }
+        
+        /* Main chat background */
+        .chat-bg {
+            background-color: var(--bg-main);
+        }
+        .online-dot { animation: pulse 2.5s infinite cubic-bezier(0.4, 0, 0.6, 1); }
+        @keyframes pulse { 50% { opacity: .5; } }
+        /* Custom classes for the new theme */
+        .bg-main { background-color: var(--bg-main); }
+        .bg-sidebar { background-color: var(--bg-sidebar); }
+        .bg-input-container { background-color: var(--bg-input-container); }
+        .bg-user-message { background-color: var(--bg-user-message); }
+        .bg-ai-message { background-color: var(--bg-ai-message); }
+        .bg-button { background-color: var(--bg-button); }
+        .bg-button-hover:hover { background-color: var(--bg-button-hover); }
+        .border-custom { border-color: var(--border-color); }
+        .text-primary { color: var(--text-primary); }
+        .text-secondary { color: var(--text-secondary); }
+        .text-accent { color: var(--accent-color); }
+    </style>
+</head>
+<body class="antialiased">
+    <div class="flex h-screen w-full">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="bg-sidebar p-2 sm:p-4 flex-col border-r border-custom z-20 w-64 absolute md:relative h-full -translate-x-full md:translate-x-0 flex transition-transform duration-300 ease-in-out">
+            <div class="flex items-center justify-between pb-4 border-b border-custom">
+                <div class="flex items-center space-x-2">
+                    <div class="w-8 h-8 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6 text-accent" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                    <h1 class="text-lg font-semibold text-primary">PRIME AI</h1>
+                </div>
+                <button id="close-sidebar-btn" class="md:hidden text-secondary hover:text-primary">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            
+            <div class="py-4 flex flex-col gap-2">
+                <button id="new-chat-btn" class="w-full flex items-center justify-center gap-2 text-sm bg-button bg-button-hover text-primary font-medium px-3 py-2 rounded-lg transition-colors">
+                    <i data-lucide="plus" class="w-4 h-4"></i>
+                    New Chat
+                </button>
+            </div>
+            <div class="flex-grow overflow-y-auto" id="saved-chats-container">
+                <!-- Saved chat items will be injected here -->
+            </div>
+        </aside>
+        <!-- Main Content -->
+        <div id="main-content" class="flex-1 flex flex-col chat-bg z-10 relative">
+            <!-- Header -->
+            <header class="bg-main/80 backdrop-blur-sm p-2 sm:p-4 flex items-center justify-between border-b border-custom sticky top-0">
+                <div class="flex items-center space-x-3">
+                     <button id="menu-btn" class="md:hidden text-secondary hover:text-primary"><i data-lucide="menu" class="w-6 h-6"></i></button>
+                     <div class="w-10 h-10 rounded-full items-center justify-center flex-shrink-0 hidden sm:flex">
+                        <svg class="w-6 h-6 text-accent" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-bold text-primary" id="chat-title">New Chat</h1>
+                         <div class="flex items-center text-xs text-green-400">
+                            <span class="w-2 h-2 bg-green-400 rounded-full mr-1.5 online-dot"></span>
+                            Online
+                        </div>
+                    </div>
+                </div>
+                 <button class="text-secondary hover:text-primary" id="delete-chat-btn">
+                    <i data-lucide="trash-2" class="w-5 h-5"></i>
+                </button>
+            </header>
+            <!-- Chat Messages -->
+            <main id="chat-container" class="flex-1 overflow-y-auto p-2 sm:p-4 md:p-6 space-y-6">
+                 <!-- Welcome Message -->
+                <div id="welcome-message" class="text-center pt-16">
+                    <div class="w-16 h-16 bg-accent/10 rounded-full inline-flex items-center justify-center mb-4">
+                        <svg class="w-8 h-8 text-accent" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                             <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                    <h2 class="text-3xl font-bold text-primary">How can I help you today?</h2>
+                </div>
+            </main>
+            <!-- Message Input -->
+            <footer class="bg-main/80 backdrop-blur-sm p-2 sm:p-4 border-t border-custom sticky bottom-0">
+                <div class="w-full max-w-3xl mx-auto">
+                    <div class="bg-input-container border border-custom rounded-lg">
+                        <div id="image-preview-container" class="p-2 border-b border-custom hidden"></div>
+                        <form id="chat-form" class="relative flex items-end space-x-2 sm:space-x-3">
+                            <input type="file" id="image-upload-input" class="hidden" accept="image/*">
+                            <button type="button" id="image-upload-btn" class="p-2 sm:p-3 text-secondary hover:text-primary focus:outline-none flex-shrink-0">
+                                <i data-lucide="image-plus" class="w-5 h-5"></i>
+                            </button>
+                            <textarea
+                                id="message-input"
+                                placeholder="Ask me anything, or upload an image..."
+                                class="flex-1 bg-transparent py-2 sm:py-3 text-sm text-primary placeholder-secondary focus:outline-none resize-none pr-2 sm:pr-12 max-h-32"
+                                rows="1"
+                            ></textarea>
+                            <button
+                                type="submit"
+                                id="send-button"
+                                class="bg-button bg-button-hover text-primary rounded-md p-2 sm:p-3 flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-blue-500 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed absolute sm:relative right-1 sm:right-auto top-1/2 -translate-y-1/2 sm:translate-y-0"
+                            >
+                                <i data-lucide="send" class="w-5 h-5"></i>
+                            </button>
+                        </form>
+                    </div>
+                    <p class="text-center text-xs text-secondary mt-2 px-2">PRIME AI can make mistakes. Consider checking important information.</p>
+                </div>
+            </footer>
+        </div>
+    </div>
+    
+    <script type="module">
+        lucide.createIcons();
+        // DOM Elements
+        const sidebar = document.getElementById('sidebar');
+        const menuBtn = document.getElementById('menu-btn');
+        const closeSidebarBtn = document.getElementById('close-sidebar-btn');
+        const messageInput = document.getElementById('message-input');
+        const chatForm = document.getElementById('chat-form');
+        const chatContainer = document.getElementById('chat-container');
+        const welcomeMessage = document.getElementById('welcome-message');
+        const sendButton = document.getElementById('send-button');
+        const imageUploadBtn = document.getElementById('image-upload-btn');
+        const imageUploadInput = document.getElementById('image-upload-input');
+        const imagePreviewContainer = document.getElementById('image-preview-container');
+        const newChatBtn = document.getElementById('new-chat-btn');
+        const savedChatsContainer = document.getElementById('saved-chats-container');
+        const deleteChatBtn = document.getElementById('delete-chat-btn');
+        const chatTitle = document.getElementById('chat-title');
+        
+        // App State
+        let currentChatId = null;
+        let uploadedImage = null;
+        const API_KEY = 'AIzaSyDC2X3z8HT6DuNeTRzH5asqd6nQ3p_37_E';
+        const SYSTEM_PROMPT = 'You are PRIME AI, a helpful AI assistant developed by Abdullah Mun Eshan. When users ask about you or the developer, mention that you are PRIME AI and the developer is Abdullah Mun Eshan.';
+        
+        // --- Event Listeners ---
+        menuBtn.addEventListener('click', toggleSidebar);
+        closeSidebarBtn.addEventListener('click', closeSidebar);
+        messageInput.addEventListener('input', () => {
+            messageInput.style.height = 'auto';
+            messageInput.style.height = (messageInput.scrollHeight) + 'px';
+            validateInput();
+        });
+        chatForm.addEventListener('submit', handleSendMessage);
+        messageInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); chatForm.dispatchEvent(new Event('submit')); }
+        });
+        imageUploadBtn.addEventListener('click', () => imageUploadInput.click());
+        imageUploadInput.addEventListener('change', handleImageUpload);
+        newChatBtn.addEventListener('click', createNewChat);
+        deleteChatBtn.addEventListener('click', deleteCurrentChat);
+        
+        function toggleSidebar() {
+            const isOpen = sidebar.classList.contains('-translate-x-full') === false;
+            if (isOpen) {
+                closeSidebar();
+            } else {
+                openSidebar();
+            }
+        }
+        
+        function openSidebar() {
+            sidebar.classList.remove('-translate-x-full');
+            updateToggleIcon(true); // show X when open
+        }
+        
+        function closeSidebar() {
+            sidebar.classList.add('-translate-x-full');
+            updateToggleIcon(false); // show menu when closed
+        }
+        
+        function updateToggleIcon(isOpen) {
+            const iconEl = menuBtn.querySelector('i');
+            if (iconEl) {
+                iconEl.setAttribute('data-lucide', isOpen ? 'x' : 'menu');
+                lucide.createIcons();
+            }
+        }
+        
+        // --- Core Functions ---
+        function validateInput() {
+            const hasText = messageInput.value.trim().length > 0;
+            const hasImage = !!uploadedImage;
+            sendButton.disabled = !hasText && !hasImage;
+        }
+        
+        async function handleSendMessage(e) {
+            e.preventDefault();
+            const messageText = messageInput.value.trim();
+            if (messageText === '' && !uploadedImage) return;
+            if (welcomeMessage) { welcomeMessage.style.display = 'none'; }
+            const userMessage = {
+                sender: 'user', text: messageText, image: uploadedImage,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            };
+            addMessageToDOM(userMessage);
+            
+            if (!currentChatId) {
+                const firstMessageContent = messageText || "Image conversation";
+                const newId = `chat_${Date.now()}`;
+                const newChat = {
+                    id: newId, title: firstMessageContent.substring(0, 30), messages: [userMessage]
+                };
+                localStorage.setItem(newId, JSON.stringify(newChat));
+                currentChatId = newId;
+                chatTitle.textContent = newChat.title;
+                loadSavedChats();
+                setActiveChat(newId);
+            } else {
+                 saveMessage(userMessage);
+            }
+            messageInput.value = '';
+            messageInput.style.height = 'auto';
+            clearImagePreview();
+            validateInput();
+            await generateAIResponse(userMessage);
+        }
+        
+        async function generateAIResponse(userMessage) {
+            addTypingIndicator();
+            try {
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`;
+                let parts = [];
+                
+                let userPrompt = userMessage.text || '';
+                if (userMessage.image) {
+                    const matches = userMessage.image.match(/^data:([A-Za-z-+/]+);base64,(.+)$/);
+                    if (matches) {
+                        const mimeType = matches[1];
+                        const base64Data = matches[2];
+                        parts.push({
+                            inline_data: {
+                                mime_type: mimeType,
+                                data: base64Data
+                            }
+                        });
+                    } else {
+                        throw new Error('Invalid image data URL format');
+                    }
+                }
+                
+                const fullPrompt = userMessage.image && !userMessage.text ? 'Please analyze this image.' : userPrompt;
+                parts.push({ text: `${SYSTEM_PROMPT}\n\n${fullPrompt}` });
+                
+                if (parts.length === 0) {
+                    throw new Error('No content to process');
+                }
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts }],
+                        generationConfig: {
+                            temperature: 0.7,
+                            topK: 1,
+                            topP: 1,
+                            maxOutputTokens: 2048,
+                        },
+                    })
+                });
+                
+                if (!response.ok) {
+                    const errorBody = await response.text();
+                    console.error('API Error Response:', errorBody);
+                    throw new Error(`API request failed: ${response.status} - ${response.statusText}. Details: ${errorBody}`);
+                }
+                
+                const data = await response.json();
+                const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response generated.';
+                
+                const aiMessage = {
+                    sender: 'ai', text: aiText,
+                    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                };
+                addMessageToDOM(aiMessage);
+                saveMessage(aiMessage);
+            } catch (error) {
+                console.error('Gemini API Error:', error);
+                const errorText = error.message || 'An unexpected error occurred. Please check the console for more details.';
+                const errorMsg = {
+                    sender: 'ai',
+                    text: `Error: ${errorText}`,
+                    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                };
+                addMessageToDOM(errorMsg);
+                saveMessage(errorMsg);
+            } finally {
+                removeTypingIndicator();
+            }
+        }
+        
+        function addMessageToDOM({ sender, text, image, timestamp }) {
+            const messageWrapper = document.createElement('div');
+            const textHtml = text ? `<p>${text.replace(/\n/g, '<br>')}</p>` : '';
+            const imageHtml = image ? `<img src="${image}" alt="Uploaded content" class="mt-2 rounded-lg max-w-xs cursor-pointer" onclick="window.open('${image}')">` : '';
+            const timeHtml = `<div class="text-xs text-secondary mt-1.5">${timestamp}</div>`;
+            const messageContent = `${imageHtml}${textHtml}${timeHtml}`;
+            if (sender === 'user') {
+                const userAvatar = `<div class="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold">U</div>`;
+                messageWrapper.className = 'flex items-start gap-3 justify-end';
+                messageWrapper.innerHTML = `<div class="bg-user-message text-primary rounded-lg p-3 max-w-xl">${messageContent}</div> ${userAvatar}`;
+            } else {
+                messageWrapper.className = 'flex items-start gap-3';
+                messageWrapper.innerHTML = `
+                    <div class="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0">
+                        <svg class="w-5 h-5 text-accent" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                    <div class="bg-ai-message text-primary rounded-lg p-3 max-w-xl">${messageContent}</div>`;
+            }
+            chatContainer.appendChild(messageWrapper);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+        
+        function addTypingIndicator() {
+            const typingIndicator = document.createElement('div');
+            typingIndicator.id = 'typing-indicator';
+            typingIndicator.className = 'flex items-start gap-3';
+            typingIndicator.innerHTML = `
+                <div class="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0">
+                     <svg class="w-5 h-5 text-accent" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <div class="bg-ai-message text-primary rounded-lg p-3 max-w-xl">
+                    <div class="flex items-center space-x-1">
+                        <span class="w-2 h-2 bg-gray-400 rounded-full animate-pulse" style="animation-delay: 0s;"></span>
+                        <span class="w-2 h-2 bg-gray-400 rounded-full animate-pulse" style="animation-delay: 0.2s;"></span>
+                        <span class="w-2 h-2 bg-gray-400 rounded-full animate-pulse" style="animation-delay: 0.4s;"></span>
+                    </div>
+                </div>`;
+            chatContainer.appendChild(typingIndicator);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+        
+        function removeTypingIndicator() {
+            const indicator = document.getElementById('typing-indicator');
+            if (indicator) { indicator.remove(); }
+        }
+        
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    uploadedImage = e.target.result;
+                    displayImagePreview(uploadedImage);
+                    validateInput();
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+        
+        function displayImagePreview(imageDataUrl) {
+            imagePreviewContainer.classList.remove('hidden');
+            imagePreviewContainer.innerHTML = `
+                <div class="relative inline-block">
+                    <img src="${imageDataUrl}" class="h-16 w-16 object-cover rounded-md">
+                    <button id="remove-image-btn" class="absolute -top-2 -right-2 bg-red-600 text-white rounded-full p-0.5 w-5 h-5 flex items-center justify-center text-xs">
+                        <i data-lucide="x" class="w-4 h-4"></i>
+                    </button>
+                </div>`;
+            document.getElementById('remove-image-btn').addEventListener('click', clearImagePreview);
+            lucide.createIcons();
+        }
+        
+        function clearImagePreview() {
+            imagePreviewContainer.innerHTML = '';
+            imagePreviewContainer.classList.add('hidden');
+            imageUploadInput.value = '';
+            uploadedImage = null;
+            validateInput();
+        }
+        
+        // --- Chat Session Management ---
+        function createNewChat() {
+            currentChatId = null;
+            chatContainer.innerHTML = '';
+            chatContainer.appendChild(welcomeMessage);
+            welcomeMessage.style.display = 'block';
+            chatTitle.textContent = 'New Chat';
+            clearImagePreview();
+            messageInput.value = '';
+            messageInput.focus();
+            setActiveChat(null);
+        }
+        
+        function loadChat(chatId) {
+            const chatData = JSON.parse(localStorage.getItem(chatId));
+            if (chatData) {
+                currentChatId = chatId;
+                chatContainer.innerHTML = '';
+                if(chatData.messages.length > 0) {
+                     chatData.messages.forEach(addMessageToDOM);
+                     welcomeMessage.style.display = 'none';
+                } else {
+                     chatContainer.appendChild(welcomeMessage);
+                     welcomeMessage.style.display = 'block';
+                }
+                chatTitle.textContent = chatData.title;
+                setActiveChat(chatId);
+            }
+        }
+        
+        function saveMessage(message) {
+            if (!currentChatId) return;
+            const chatData = JSON.parse(localStorage.getItem(currentChatId));
+            if (chatData) {
+                chatData.messages.push(message);
+                localStorage.setItem(currentChatId, JSON.stringify(chatData));
+            }
+        }
+        
+        function loadSavedChats() {
+            savedChatsContainer.innerHTML = '';
+            const chats = Object.keys(localStorage)
+                .filter(key => key.startsWith(`chat_`))
+                .map(key => JSON.parse(localStorage.getItem(key)))
+                .sort((a, b) => b.id.split('_')[1] - a.id.split('_')[1]);
+            if (chats.length > 0) {
+                const recentLabel = document.createElement('h3');
+                recentLabel.className = 'text-xs font-semibold text-secondary px-2 mb-1';
+                recentLabel.textContent = 'Recent';
+                savedChatsContainer.appendChild(recentLabel);
+            }
+            chats.forEach(chat => {
+                const chatItem = document.createElement('button');
+                chatItem.className = 'w-full text-left text-sm p-2 rounded-md transition-colors text-secondary flex items-center justify-between gap-2 chat-item';
+                chatItem.dataset.chatId = chat.id;
+                chatItem.innerHTML = `<span class="truncate flex-1">${chat.title}</span>`;
+                chatItem.addEventListener('click', () => loadChat(chat.id));
+                savedChatsContainer.appendChild(chatItem);
+            });
+        }
+        
+        function setActiveChat(chatId) {
+            document.querySelectorAll('.chat-item').forEach(item => {
+                if (item.dataset.chatId === chatId) {
+                    item.classList.add('bg-gray-800', 'text-primary');
+                } else {
+                    item.classList.remove('bg-gray-800', 'text-primary');
+                }
+            });
+             deleteChatBtn.style.display = chatId ? 'block' : 'none';
+        }
+        
+        function deleteCurrentChat() {
+            if (currentChatId) {
+                if (confirm('Are you sure you want to delete this chat?')) {
+                    localStorage.removeItem(currentChatId);
+                    loadSavedChats();
+                    createNewChat();
+                }
+            }
+        }
+        
+        // --- Initialization ---
+        function initializeApp() {
+            loadSavedChats();
+            const lastChatKey = Object.keys(localStorage)
+                .filter(k => k.startsWith(`chat_`))
+                .sort((a, b) => b.split('_')[1] - a.split('_')[1])
+                .shift();
+            
+            if (lastChatKey) {
+                loadChat(lastChatKey);
+            } else {
+                createNewChat();
+            }
+            validateInput();
+        }
+        initializeApp();
+    </script>
+</body>
+</html>
